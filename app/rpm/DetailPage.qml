@@ -22,7 +22,6 @@ Page {
 
         Column {
             id: contentColumn
-            anchors.margins: Theme.horizontalPageMargin
             x: Theme.horizontalPageMargin
             width: parent.width - 2 * Theme.horizontalPageMargin
             spacing: Theme.paddingMedium
