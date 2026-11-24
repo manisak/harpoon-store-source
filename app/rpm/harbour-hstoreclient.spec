@@ -1,5 +1,9 @@
 Name:       harbour-hstoreclient
 Summary:    Harpoon Store client - browse and install SailfishOS apps
+%description
+Harpoon Store client: browse community Sailfish OS apps and install
+them with Harpoon via a single tap.
+
 Version:    0.1.0
 Release:    1
 Group:      Applications/Internet
