@@ -12,10 +12,7 @@ Requires:   sailfish-qml
 Browse the Harpoon Store community app list and install apps with a single
 tap: this client opens Harpoon pre-filled with the app's repository URL.
 
-%prep
-%setup -q
 
-%build
 
 %install
 mkdir -p %{buildroot}%{_datadir}/%{name}/qml/pages
