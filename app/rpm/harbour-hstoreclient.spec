@@ -1,6 +1,6 @@
 Name:       harbour-hstoreclient
 Summary:    Harpoon Store client - browse and install SailfishOS apps
-Version:    0.1.3
+Version:    0.1.4
 Release:    1
 Group:      Applications/Internet
 License:    MIT
