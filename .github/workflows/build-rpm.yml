@@ -1,0 +1,30 @@
+name: build-rpm
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'app/**' ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install rpm tooling
+        run: sudo apt-get update && sudo apt-get install -y rpm
+      - name: Build noarch RPM
+        run: |
+          mkdir -p ~/rpmbuild/{BUILD,RPMS,SOURCES,SPECS}
+          cp -r app/rpm/* ~/rpmbuild/SOURCES/
+          rpmbuild -bb ~/rpmbuild/SOURCES/harbour-hstoreclient.spec \
+            --define "_sourcedir $HOME/rpmbuild/SOURCES"
+          cp ~/rpmbuild/RPMS/noarch/*.rpm app/
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.0
+          name: harpoon-store client 0.1.0
+          files: app/*.rpm
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
