@@ -1,13 +1,35 @@
 import QtQuick 2.2
 import Sailfish.Silica 1.0
 
-// Root is a Page: sailfish-qml embeds this page into its own app window
 Page {
     id: page
 
     property string storeUrl: "https://harpoon-store.manisak.com"
+    property string appStatus: "loading…"
 
     ListModel { id: listModel }
+
+    function loadApps() {
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", storeUrl + "/api/apps.json", true);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    try {
+                        var obj = JSON.parse(xhr.responseText);
+                        listModel.clear();
+                        for (var i = 0; i < obj.apps.length; i++) listModel.append(obj.apps[i]);
+                        appStatus = "ok: " + obj.apps.length + " apps";
+                    } catch (e) {
+                        appStatus = "Parse error: " + e;
+                    }
+                } else {
+                    appStatus = "Store not reachable (HTTP " + xhr.status + ")";
+                }
+            }
+        };
+        xhr.send();
+    }
 
     SilicaListView {
         id: listView
@@ -40,30 +62,17 @@ Page {
     }
 
     Label {
-        id: loadingLabel
+        id: statusLabel
         anchors.centerIn: parent
         text: appStatus
         color: Theme.highlightColor
+        visible: listModel.count === 0
     }
 
-    function loadApps(xhr_status) {
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", storeUrl + "/api/apps.json", true);
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
-                if (xhr.status === 200) {
-                    try {
-                        var obj = JSON.parse(xhr.responseText);
-                        listModel.clear();
-                        for (var i = 0; i < obj.apps.length; i++) listModel.append(obj.apps[i]);
-                        appStatus = "ok: " + obj.apps.length + " apps";
-                    } catch (e) { appStatus = "Parse error: " + e; }
-                } else {
-                    appStatus = "Store not reachable (HTTP " + xhr.status + ")";
-                }
-            }
-        };
-        xhr.send();
+    BusyIndicator {
+        anchors.centerIn: parent
+        running: visible
+        visible: appStatus.indexOf("loading") === 0 && listModel.count === 0
     }
 
     onStatusChanged: if (status === PageStatus.Active && listModel.count === 0) page.loadApps()
