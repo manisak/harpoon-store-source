@@ -6,7 +6,7 @@ Group:      Applications/Internet
 License:    MIT
 URL:        https://harpoon-store.manisak.com
 BuildArch:  noarch
-Requires:   sailfish-qml
+Requires:   libsailfishapp-launcher
 Source0:    harbour-hstoreclient-0.1.0.tar.gz
 Source1:    harbour-hstoreclient.desktop
 
