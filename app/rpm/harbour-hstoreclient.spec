@@ -1,13 +1,13 @@
 Name:       harbour-hstoreclient
 Summary:    Harpoon Store client - browse and install SailfishOS apps
-Version:    0.1.1
+Version:    0.1.2
 Release:    1
 Group:      Applications/Internet
 License:    MIT
 URL:        https://harpoon-store.manisak.com
 BuildArch:  noarch
 Requires:   libsailfishapp-launcher
-Source0:    harbour-hstoreclient-0.1.1.tar.gz
+Source0:    harbour-hstoreclient-0.1.2.tar.gz
 Source1:    harbour-hstoreclient.desktop
 
 %description
@@ -16,10 +16,10 @@ them with Harpoon via a single tap.
 
 %prep
 cd $HOME/rpmbuild/SOURCES
-mkdir harbour-hstoreclient-0.1.1
-cp *.qml *.png harbour-hstoreclient.desktop harbour-hstoreclient-0.1.1/
-tar czf harbour-hstoreclient-0.1.1.tar.gz harbour-hstoreclient-0.1.1
-%setup -q -n harbour-hstoreclient-0.1.1
+mkdir harbour-hstoreclient-0.1.2
+cp *.qml *.png harbour-hstoreclient.desktop harbour-hstoreclient-0.1.2/
+tar czf harbour-hstoreclient-0.1.2.tar.gz harbour-hstoreclient-0.1.2
+%setup -q -n harbour-hstoreclient-0.1.2
 
 %install
 mkdir -p %{buildroot}%{_datadir}/%{name}/qml
