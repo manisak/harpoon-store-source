@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Harpoon Store
+Icon=harbour-hstoreclient
+Exec=/usr/bin/sailfish-qml /usr/share/harbour-hstoreclient/qml/harbour-hstoreclient.qml
+X-Nemo-Application-Type=silica-qt5
