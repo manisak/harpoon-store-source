@@ -1115,15 +1115,87 @@ app.get('/api/apps.json', async (req, res, next) => {
       whereClauses.push('a.category_id=?');
       qParams.push(cRow.id);
     }
-    const apps = await dbAll(`SELECT a.id, a.name, a.icon_file, a.description, a.repo_url, a.current_version, a.version_checked_at, c.name AS category,
+    const apps = await dbAll(`SELECT a.id, a.name, a.icon_file, a.source, a.description, a.repo_url, a.current_version, a.version_checked_at, c.name AS category, c.slug AS cat_slug,
+      u.username AS owner, u.id AS owner_id,
       (SELECT AVG(stars) FROM ratings WHERE app_id=a.id) AS rating,
-      (SELECT COUNT(*) FROM ratings WHERE app_id=a.id) AS ratings FROM apps a JOIN categories c ON c.id=a.category_id
+      (SELECT COUNT(*) FROM ratings WHERE app_id=a.id) AS ratings FROM apps a
+      JOIN categories c ON c.id=a.category_id
+      JOIN users u ON u.id=a.user_id
       WHERE ${whereClauses.join(' AND ')} ORDER BY a.id DESC`, ...qParams);
     const meta = await dbAll('SELECT app_id, file FROM screenshots ORDER BY id');
     const shots = {};
     for (const s of meta) (shots[s.app_id] = shots[s.app_id] || []).push('/api/app/' + s.app_id + '/shot/' + s.file);
+    const contribRows = await dbAll('SELECT app_id, login FROM contributors ORDER BY id');
+    const contribs = {};
+    for (const r of contribRows) (contribs[r.app_id] = contribs[r.app_id] || []).push(r.login);
     const categoriesOut = await dbAll('SELECT c.id, c.slug, c.name, (SELECT COUNT(*) FROM apps WHERE category_id=c.id AND status=\'approved\') AS count FROM categories c ORDER BY c.name');
-    res.json({ categories: categoriesOut, apps: apps.map(a => ({ id: a.id, name: a.name, iconUrl: a.icon_file ? "/app/" + a.id + "/icon" : null, description: String(a.description).split("\\n")[0].slice(0, 180), repo_url: a.repo_url, current_version: a.current_version, version_checked_at: a.version_checked_at, category: a.category, rating: a.rating, ratings: a.ratings, screenshots: shots[a.id] || [] })) });
+    res.json({ categories: categoriesOut, apps: apps.map(a => ({
+      id: a.id, name: a.name,
+      iconUrl: a.icon_file ? "/app/" + a.id + "/icon" : null,
+      description: String(a.description).split("\\n")[0].slice(0, 180),
+      repo_url: a.repo_url,
+      current_version: a.current_version,
+      version_checked_at: a.version_checked_at,
+      category: a.category, cat_slug: a.cat_slug,
+      rating: a.rating, ratings: a.ratings,
+      owner: a.owner, owner_id: a.owner_id,
+      contributors: contribs[a.id] || [],
+      screenshots: shots[a.id] || [], source: a.source || ""
+    })) });
+  } catch (e) { next(e); }
+});
+
+app.get('/api/app/:id.json', async (req, res, next) => {
+  try {
+    const a = await dbGet(`SELECT a.*, c.slug AS cat_slug, c.name AS category, u.username AS owner, u.id AS owner_id
+      FROM apps a JOIN categories c ON c.id=a.category_id JOIN users u ON u.id=a.user_id
+      WHERE a.id=? AND a.status='approved'`, req.params.id);
+    if (!a) return res.status(404).json({ error: 'not found' });
+    const shots = await dbAll('SELECT id, file FROM screenshots WHERE app_id=? ORDER BY id', a.id);
+    const rstats = await dbGet('SELECT AVG(stars) AS avg, COUNT(*) AS n FROM ratings WHERE app_id=?', a.id);
+    const contribs = await dbAll('SELECT login FROM contributors WHERE app_id=? ORDER BY id LIMIT 24', a.id);
+    const comments = await dbAll('SELECT ac.id, ac.body, ac.created_at, u.username FROM app_comments ac JOIN users u ON u.id=ac.user_id WHERE ac.app_id=? ORDER BY ac.id DESC LIMIT 30', a.id);
+    const pkgs = await dbAll('SELECT id, label, url FROM app_packages WHERE app_id=? ORDER BY id', a.id);
+    const otherByOwner = await dbAll('SELECT id, name FROM apps WHERE user_id=? AND id<>? AND status=\'approved\' ORDER BY name LIMIT 8', a.user_id, a.id);
+    res.json({
+      id: a.id, name: a.name,
+      description: a.description,
+      repo_url: a.repo_url,
+      current_version: a.current_version,
+      version_checked_at: a.version_checked_at,
+      category: a.category, cat_slug: a.cat_slug,
+      iconUrl: a.icon_file ? ('/app/' + a.id + '/icon') : null,
+      rating: rstats?.avg || null, ratings: rstats?.n || 0,
+      owner: a.owner, owner_id: a.owner_id,
+      contributors: contribs.map(c => c.login),
+      screenshots: shots.map(s => '/api/app/' + a.id + '/shot/' + s.file),
+      packages: pkgs,
+      comments: comments.map(c => ({ id: c.id, body: c.body, username: c.username, created_at: c.created_at })),
+      more_from_developer: otherByOwner
+    });
+  } catch (e) { next(e); }
+});
+
+app.get('/api/developer/:username.json', async (req, res, next) => {
+  try {
+    const u = await dbGet('SELECT id, username, role, created_at FROM users WHERE username=?', req.params.username);
+    if (!u) return res.status(404).json({ error: 'not found' });
+    const apps = await dbAll(`SELECT a.id, a.name, a.icon_file, a.source, a.current_version, c.name AS category,
+      (SELECT AVG(stars) FROM ratings WHERE app_id=a.id) AS rating,
+      (SELECT COUNT(*) FROM ratings WHERE app_id=a.id) AS ratings
+      FROM apps a JOIN categories c ON c.id=a.category_id
+      WHERE a.user_id=? AND a.status='approved' ORDER BY a.name`, u.id);
+    const total = await dbGet('SELECT COUNT(*) AS n FROM apps WHERE user_id=? AND status=\'approved\'', u.id);
+    res.json({
+      username: u.username, role: u.role, member_since: u.created_at,
+      app_count: total?.n || 0,
+      apps: apps.map(a => ({
+        id: a.id, name: a.name,
+        iconUrl: a.icon_file ? ('/app/' + a.id + '/icon') : null,
+        category: a.category, current_version: a.current_version,
+        rating: a.rating, ratings: a.ratings
+      }))
+    });
   } catch (e) { next(e); }
 });
 app.get('/api/app/:id/shot/:file', async (req, res) => {
